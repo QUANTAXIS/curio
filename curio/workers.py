@@ -343,8 +343,9 @@ class ProcessWorker(object):
         self.pool = pool
 
     def _launch(self):
-        client_ch, server_ch = multiprocessing.Pipe()
-        self.process = multiprocessing.Process(
+        context = multiprocessing.get_context('spawn')
+        client_ch, server_ch = context.Pipe()
+        self.process = context.Process(
             target=self.run_server, args=(server_ch, ), daemon=True)
         self.process.start()
         server_ch.close()
@@ -362,6 +363,7 @@ class ProcessWorker(object):
             await self.pool.release(self)
 
     def run_server(self, ch):
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         while True:
             func, args = ch.recv()

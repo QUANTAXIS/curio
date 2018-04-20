@@ -64,6 +64,7 @@ from .traps import _read_wait, Traps
 from . import meta
 from .debug import _create_debuggers
 from .timequeue import TimeQueue
+from .activation import Activation
 
 # ----------------------------------------------------------------------
 # Underlying kernel that drives everything
@@ -125,7 +126,7 @@ class Kernel(object):
         return self
 
     def __exit__(self, ty, val, tb):
-        if not ty:
+        if not ty or ty in { KeyboardInterrupt, SystemExit }:
             self.run(shutdown=True)
 
     def _call_at_shutdown(self, func):
@@ -608,7 +609,7 @@ class Kernel(object):
                 task._last_io = None
 
         # Initialize activations
-        _activations = [ act() if (isinstance(act, type) and issubclass(act, ActivationBase)) else act
+        _activations = [ act() if (isinstance(act, type) and issubclass(act, Activation)) else act
                          for act in kernel._activations ]
         kernel._activations = _activations
 
@@ -764,7 +765,7 @@ class Kernel(object):
                     else:
                         active.next_value = None
                         active.next_exc = e
-                        if active.report_crash and not isinstance(e, CancelledError):
+                        if active.report_crash and not isinstance(e, (CancelledError, SystemExit)):
                             log.error('Task Crash: %r', active, exc_info=True)
                         if not isinstance(e, Exception):
                             raise
